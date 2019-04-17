@@ -1,0 +1,43 @@
+#!/bin/bash
+
+FRONTEND_ROOT_DIR="frontend"
+FRONTEND_DIST_DIR="dist/js/app"
+PUBLIC_JS_DIR="public/js/app"
+TEMPLATE_FILE="templates/frontend/index.html.twig"
+
+NG_CMD="ng build"
+BUILD_PARAMS="--deploy-url /js/app/ --output-path $FRONTEND_DIST_DIR --index src/index.dist.html"
+
+if [[ $1 == "prod" ]]; then
+    BUILD_PARAMS+=" --prod"
+fi
+
+if [[ -d "$FRONTEND_ROOT_DIR-dev" ]]; then
+    FRONTEND_ROOT_DIR+="-dev"
+fi
+
+echo "cd $FRONTEND_ROOT_DIR"
+cd $FRONTEND_ROOT_DIR
+
+echo "$NG_CMD $BUILD_PARAMS"
+$NG_CMD $BUILD_PARAMS
+if [[ $? == 1 ]]; then
+    exit 1
+fi
+
+echo "cd .."
+cd ..
+
+if [[ -d $PUBLIC_JS_DIR ]]; then
+    echo "rm -rf $PUBLIC_JS_DIR"
+    rm -rf $PUBLIC_JS_DIR
+fi
+
+echo "cp -rf $FRONTEND_ROOT_DIR/$FRONTEND_DIST_DIR $PUBLIC_JS_DIR"
+cp -rf $FRONTEND_ROOT_DIR/$FRONTEND_DIST_DIR $PUBLIC_JS_DIR
+
+echo "cp $PUBLIC_JS_DIR/index.dist.html $TEMPLATE_FILE"
+cp "$PUBLIC_JS_DIR/index.dist.html" $TEMPLATE_FILE
+
+echo "rm -f $PUBLIC_JS_DIR/index.dist.html"
+rm -f "$PUBLIC_JS_DIR/index.dist.html"

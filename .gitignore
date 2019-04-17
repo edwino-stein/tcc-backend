@@ -19,5 +19,6 @@
 
 
 ### Angular application ###
+templates/frontend/index.html.twig
 public/js/app/
 frontend-dev
