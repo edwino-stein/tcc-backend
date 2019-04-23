@@ -1,3 +1,6 @@
 [submodule "frontend"]
 	path = frontend
 	url = https://github.com/edwino-stein/tcc-frontend.git
+[submodule "jsmpeg"]
+	path = jsmpeg
+	url = https://github.com/edwino-stein/jsmpeg.git
