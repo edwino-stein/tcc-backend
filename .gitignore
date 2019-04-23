@@ -21,4 +21,6 @@
 ### Angular application ###
 templates/frontend/index.html.twig
 public/js/app/
+public/js/jsmpeg/
 frontend-dev
+jsmpeg-dev

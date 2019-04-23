@@ -1,0 +1,49 @@
+#!/bin/bash
+
+ROOT_DIR="jsmpeg"
+DIST_DIR="build"
+SRC_DIR="src"
+PUBLIC_JS_DIR="public/js/jsmpeg"
+
+MAKE_CMD="make"
+BUILD_PARAMS="clean all"
+
+if [[ -d "$ROOT_DIR-dev" ]]; then
+    ROOT_DIR+="-dev"
+fi
+
+echo "cd $ROOT_DIR"
+cd $ROOT_DIR
+
+echo "$MAKE_CMD $BUILD_PARAMS"
+$MAKE_CMD $BUILD_PARAMS
+if [[ $? == 1 ]]; then
+    exit 1
+fi
+
+echo "cd .."
+cd ..
+
+if [[ -d $PUBLIC_JS_DIR ]]; then
+    echo "rm -rf $PUBLIC_JS_DIR"
+    rm -rf $PUBLIC_JS_DIR
+    mkdir $PUBLIC_JS_DIR
+fi
+
+if [[ $1 == "prod" ]]; then
+    echo "cp $ROOT_DIR/$DIST_DIR/jsmpeg.min.js $PUBLIC_JS_DIR/"
+    cp $ROOT_DIR/$DIST_DIR/jsmpeg.min.js $PUBLIC_JS_DIR/
+else
+
+    echo "cp -rf $ROOT_DIR/$DIST_DIR/* $PUBLIC_JS_DIR"
+    cp -rf $ROOT_DIR/$DIST_DIR/* $PUBLIC_JS_DIR
+
+    echo "mv $PUBLIC_JS_DIR/jsmpeg.js  $PUBLIC_JS_DIR/jsmpeg.all.js"
+    mv $PUBLIC_JS_DIR/jsmpeg.js  $PUBLIC_JS_DIR/jsmpeg.all.js
+
+    echo "cp -rf $ROOT_DIR/$SRC_DIR/* $PUBLIC_JS_DIR"
+    cp -rf $ROOT_DIR/$SRC_DIR/* $PUBLIC_JS_DIR
+
+    echo "rm -rf $PUBLIC_JS_DIR/wasm"
+    rm -rf $PUBLIC_JS_DIR/wasm
+fi
