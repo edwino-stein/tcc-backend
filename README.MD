@@ -1,5 +1,14 @@
 # TCC Backend
 
+## Dependências
+ - PHP 7+
+    * php-cli
+    * php-mbstring
+    * php-xml
+    * php-curl
+    * php-zip
+ - composer
+
 ## Deploy
 ```bash
 $ composer install
