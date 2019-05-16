@@ -6,6 +6,8 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
 
+use App\Service\ServerStream;
+
 class StreamController extends AbstractController{
 
     /**
@@ -13,6 +15,13 @@ class StreamController extends AbstractController{
      */
     public function index(Request $request){
         return $this->render('frontend/index.html.twig');
+    }
+
+    /**
+     * @Route("/stream/start", name="streamstart")
+     */
+    public function start(Request $request, ServerStream $server){
+        return $this->json($server->start());
     }
 
 }
