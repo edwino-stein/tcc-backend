@@ -1,0 +1,22 @@
+
+parameters:
+
+    server_stream:
+        reference_file: '/home/edwino/Workspace/tcc/serverstream/README.md'
+        config:
+            server_port: 8888
+            input_device: '/dev/video0'
+            decoder:
+                width: 640
+                height: 480
+                framerate: 30
+                rescale_ts: false
+            encoder:
+                demuxer: 'mpegts'
+                codec: 'mpeg1video'
+                width: 640
+                height: 480
+                framerate: 30
+                bitrate: 1000000
+                bframes: 0
+                rescale_ts: true
