@@ -31,4 +31,11 @@ class StreamController extends AbstractController{
         return $this->json($server->stop());
     }
 
+    /**
+     * @Route("/stream/status", name="streamstat")
+     */
+    public function status(Request $request, ServerStream $server){
+        return $this->json($server->status());
+    }
+
 }

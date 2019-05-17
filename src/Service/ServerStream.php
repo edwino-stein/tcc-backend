@@ -3,36 +3,68 @@
 namespace App\Service;
 
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Contracts\Cache\ItemInterface;
+
 use App\Util\UnixQueueMessage;
 
 class ServerStream {
+
+    public const SERVER_STATUS_STOPPED  = 'STOPPED';
+    public const SERVER_STATUS_WAITING  = 'WAITING';
+    public const SERVER_STATUS_RUNNING  = 'RUNNING';
+    public const SERVER_STATUS_ERROR    = 'ERROR';
 
     protected $referenceFile = "";
     protected $config = [];
 
     public function __construct(ParameterBagInterface $params){
+
         $params = $params->get("server_stream");
+        $this->config = $params['config'];
+
         $this->referenceFile = $params['reference_file'];
-        $this->config = self::parseConfig($params['config']);
-    }
-
-    static function toCamelCase($str, $sep, $startLower = true){
-
-        $words = explode($sep, $str);
-        $str = '';
-
-        foreach ($words as $k => $w) $str .= ucfirst($w);
-        return $startLower ? lcfirst($str) : $str;
-    }
-
-    static function parseConfig($c){
-
-        $config = [];
-        foreach ($c as $key => $value){
-            $config[self::toCamelCase($key, '_')] = is_array($value) ? self::parseConfig($value) : $value;
+        if(!file_exists($this->referenceFile)){
+            file_put_contents(
+                $this->referenceFile,
+                json_encode(['status' => self::SERVER_STATUS_STOPPED])
+            );
         }
+    }
 
-        return $config;
+    protected function readFileStatus(){
+
+        $data = file_get_contents($this->referenceFile);
+        if(empty($data)) return ['status' => self::SERVER_STATUS_ERROR];
+
+        $data = json_decode($data, true);
+        if($data == NULL) return ['status' => self::SERVER_STATUS_ERROR];
+
+        return $data;
+    }
+
+    protected function getStatus($ignoreCache = false){
+
+        if($ignoreCache){
+            return $this->readFileStatus();
+        }
+        else {
+
+            $cache = new FilesystemAdapter();
+            $meta = $cache->getItem('server_stream_status')->getMetaData();
+
+            if(!empty($meta)){
+                if(filemtime($this->referenceFile) < $meta['expiry']){
+                    $cache->delete('server_stream_status');
+                }
+            }
+
+            return $cache->get('server_stream_status', function (ItemInterface $item) {
+                $data = $this->readFileStatus();
+                if($data['status'] != self::SERVER_STATUS_ERROR) $item->expiresAfter(60);
+                return $data;
+            });
+        }
     }
 
     protected function getQueueMessage(&$result){
@@ -88,14 +120,22 @@ class ServerStream {
 
     public function start(){
 
-        $result = $this->send('start', $this->config);
+        $status = $this->getStatus(true)['status'];
 
-        if(!isset($result['message'])){
-            $result['message'] = (
-                $result['result'] ?
-                'Transmissão iniciado com sucesso.' :
-                'Falha ao inicializar a transmissão.'
-            );
+        if($status == self::SERVER_STATUS_WAITING){
+
+            $result = $this->send('start', self::parseConfig($this->config));
+
+            if(!isset($result['message'])){
+                $result['message'] = (
+                    $result['result'] ?
+                    'Transmissão iniciado com sucesso.' :
+                    'Falha ao inicializar a transmissão.'
+                );
+            }
+        }
+        else{
+            $result = ['result' => false, 'Server status: '. $status];
         }
 
         return $result;
@@ -103,16 +143,50 @@ class ServerStream {
 
     public function stop(){
 
-        $result = $this->send('stop');
+        $status = $this->getStatus(true)['status'];
 
-        if(!isset($result['message'])){
-            $result['message'] = (
-                $result['result'] ?
-                'Transmissão encerrada com sucesso.' :
-                'Falha ao encerrar a transmissão.'
-            );
+        if($status == self::SERVER_STATUS_RUNNING){
+
+            $result = $this->send('stop');
+
+            if(!isset($result['message'])){
+                $result['message'] = (
+                    $result['result'] ?
+                    'Transmissão encerrada com sucesso.' :
+                    'Falha ao encerrar a transmissão.'
+                );
+            }
+        }
+        else{
+            $result = ['result' => false, 'Server status: '. $status];
         }
 
         return $result;
+    }
+
+    public function status(){
+        return [
+            'result' => true,
+            'data' => $this->getStatus()
+        ];
+    }
+
+    static function toCamelCase($str, $sep, $startLower = true){
+
+        $words = explode($sep, $str);
+        $str = '';
+
+        foreach ($words as $k => $w) $str .= ucfirst($w);
+        return $startLower ? lcfirst($str) : $str;
+    }
+
+    static function parseConfig($c){
+
+        $config = [];
+        foreach ($c as $key => $value){
+            $config[self::toCamelCase($key, '_')] = is_array($value) ? self::parseConfig($value) : $value;
+        }
+
+        return $config;
     }
 }

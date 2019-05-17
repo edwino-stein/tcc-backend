@@ -2,7 +2,7 @@
 parameters:
 
     server_stream:
-        reference_file: '/home/edwino/Workspace/tcc/serverstream/README.md'
+        reference_file: '%kernel.project_dir%/var/server_stream.json'
         config:
             server_port: 8888
             input_device: '/dev/video0'
