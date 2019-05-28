@@ -11,7 +11,7 @@ use App\Util\UnixQueueMessage;
 class ServerStream {
 
     public const SERVER_STATUS_STOPPED  = 'STOPPED';
-    public const SERVER_STATUS_WAITING  = 'WAITING';
+    public const SERVER_STATUS_WAITTING  = 'WAITTING';
     public const SERVER_STATUS_RUNNING  = 'RUNNING';
     public const SERVER_STATUS_ERROR    = 'ERROR';
 
@@ -58,7 +58,6 @@ class ServerStream {
                     $cache->delete('server_stream_status');
                 }
             }
-
             return $cache->get('server_stream_status', function (ItemInterface $item) {
                 $data = $this->readFileStatus();
                 if($data['status'] != self::SERVER_STATUS_ERROR) $item->expiresAfter(60);
@@ -120,9 +119,9 @@ class ServerStream {
 
     public function start(){
 
-        $status = $this->getStatus(true)['status'];
+        $status = $this->getStatus(true);
 
-        if($status == self::SERVER_STATUS_WAITING){
+        if($status['status'] == self::SERVER_STATUS_WAITTING){
 
             $result = $this->send('start', self::parseConfig($this->config));
 
@@ -133,19 +132,23 @@ class ServerStream {
                     'Falha ao inicializar a transmissão.'
                 );
             }
+
+            sleep(2);
+            $status = $this->getStatus(true);
         }
         else{
-            $result = ['result' => false, 'Server status: '. $status];
+            $result = ['result' => false, 'message' => 'Server status: '. $status['status']];
         }
 
+        $result['data'] = $status;
         return $result;
     }
 
     public function stop(){
 
-        $status = $this->getStatus(true)['status'];
+        $status = $this->getStatus(true);
 
-        if($status == self::SERVER_STATUS_RUNNING){
+        if($status['status'] == self::SERVER_STATUS_RUNNING){
 
             $result = $this->send('stop');
 
@@ -156,11 +159,15 @@ class ServerStream {
                     'Falha ao encerrar a transmissão.'
                 );
             }
+
+            sleep(2);
+            $status = $this->getStatus(true);
         }
         else{
-            $result = ['result' => false, 'Server status: '. $status];
+            $result = ['result' => false, 'message' => 'Server status: '. $status['status']];
         }
 
+        $result['data'] = $status;
         return $result;
     }
 
