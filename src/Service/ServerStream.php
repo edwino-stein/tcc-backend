@@ -40,6 +40,7 @@ class ServerStream {
         $data = json_decode($data, true);
         if($data == NULL) return ['status' => self::SERVER_STATUS_ERROR];
 
+
         return $data;
     }
 
@@ -61,6 +62,7 @@ class ServerStream {
             return $cache->get('server_stream_status', function (ItemInterface $item) {
                 $data = $this->readFileStatus();
                 if($data['status'] != self::SERVER_STATUS_ERROR) $item->expiresAfter(60);
+                else $item->expiresAfter(0);
                 return $data;
             });
         }
