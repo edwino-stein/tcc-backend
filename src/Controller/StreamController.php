@@ -8,7 +8,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 use App\Service\ServerStream;
 
-class StreamController extends AbstractController{
+class StreamController extends AbstractController {
 
     /**
      * @Route("/stream", name="stream")

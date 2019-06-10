@@ -16,186 +16,130 @@ class ServerStream {
     public const SERVER_STATUS_ERROR    = 'ERROR';
 
     protected $referenceFile = "";
-    protected $config = [];
+    protected $sudoBin = '';
+    protected $serviceBin = '';
+    protected $ffmpegCfg = [];
+    protected $serverStreamCfg = [];
 
     public function __construct(ParameterBagInterface $params){
-
         $params = $params->get("server_stream");
-        $this->config = $params['config'];
-
-        $this->referenceFile = $params['reference_file'];
-        if(!file_exists($this->referenceFile)){
-            file_put_contents(
-                $this->referenceFile,
-                json_encode(['status' => self::SERVER_STATUS_STOPPED])
-            );
-        }
+        $this->ffmpegCfg = $params['ffmpeg'];
+        $this->serverStreamCfg = $params['server_stream'];
+        $this->sudoBin = $params['sudo_bin'];
+        $this->serviceBin = $params['service_bin'];
     }
 
-    protected function readFileStatus(){
+    protected function callService($service, $action){
 
-        $data = file_get_contents($this->referenceFile);
-        if(empty($data)) return ['status' => self::SERVER_STATUS_ERROR];
+        $cmd = implode(
+            ' ',
+            [
+                $this->sudoBin,
+                $this->serviceBin,
+                $service,
+                $action
+            ]
+        );
 
-        $data = json_decode($data, true);
-        if($data == NULL) return ['status' => self::SERVER_STATUS_ERROR];
+        $output = [];
+        exec($cmd, $output);
+        return $output;
+    }
 
+    protected function getFfmpegPid(){
+        if(!file_exists($this->ffmpegCfg['pid_file'])) return (-1);
+        $pid = (int) file_get_contents($this->ffmpegCfg['pid_file']);
+        if(!posix_getpgid($pid)) return (-1);
+        return $pid;
+    }
+
+    protected function getServerStreamPid(){
+        if(!file_exists($this->serverStreamCfg['pid_file'])) return (-1);
+        $pid = (int) file_get_contents($this->serverStreamCfg['pid_file']);
+        if(!posix_getpgid($pid)) return (-1);
+        return $pid;
+    }
+
+    protected function readDataStatus(){
+
+        $ffmpegPid = $this->getFfmpegPid();
+        $serverStreamPid = $this->getServerStreamPid();
+
+        $data = [
+            'ffmpeg' => $ffmpegPid,
+            'serverStream' => $serverStreamPid,
+            'status' => $ffmpegPid == (-1) || $serverStreamPid == (-1) ? self::SERVER_STATUS_STOPPED : self::SERVER_STATUS_RUNNING
+        ];
 
         return $data;
     }
 
     protected function getStatus($ignoreCache = false){
-
         if($ignoreCache){
-            return $this->readFileStatus();
+            return $this->readDataStatus();
         }
         else {
-
             $cache = new FilesystemAdapter();
-            $meta = $cache->getItem('server_stream_status')->getMetaData();
-
-            if(!empty($meta)){
-                if(filemtime($this->referenceFile) < $meta['expiry']){
-                    $cache->delete('server_stream_status');
-                }
-            }
             return $cache->get('server_stream_status', function (ItemInterface $item) {
-                $data = $this->readFileStatus();
-                if($data['status'] != self::SERVER_STATUS_ERROR) $item->expiresAfter(60);
-                else $item->expiresAfter(0);
+                $data = $this->readDataStatus();
+                $item->expiresAfter(10);
                 return $data;
             });
         }
-    }
-
-    protected function getQueueMessage(&$result){
-
-        if(!file_exists($this->referenceFile)){
-
-            $result = [
-                'result' => false,
-                'message' => 'Arquivo de referência inexistente.'
-            ];
-
-            return NULL;
-        }
-
-        $key = UnixQueueMessage::fileToKey($this->referenceFile);
-        if(!UnixQueueMessage::existsQueue($key)){
-            $result = [
-                'result' => false,
-                'message' => 'Fila de mensgens inexistente.'
-            ];
-
-            return NULL;
-        }
-
-        $qm = new UnixQueueMessage($key);
-
-        if(!$qm->isOk()){
-            $result = [
-                'result' => false,
-                'message' => 'Falha ao inicializar fila de mensgens.'
-            ];
-
-            return NULL;
-        }
-
-        return $qm;
-    }
-
-    protected function send($cmd, $extra = []){
-
-        $result = [];
-        $qm = $this->getQueueMessage($result);
-
-        if($qm == NULL) return $result;
-
-        $json = json_encode(
-            ['cmd' => $cmd, 'extra' => $extra],
-            JSON_UNESCAPED_SLASHES | JSON_FORCE_OBJECT
-        );
-
-        return ['result' => $qm->push($json."\0")];
     }
 
     public function start(){
 
         $status = $this->getStatus(true);
 
-        if($status['status'] == self::SERVER_STATUS_WAITTING){
-
-            $result = $this->send('start', self::parseConfig($this->config));
-
-            if(!isset($result['message'])){
-                $result['message'] = (
-                    $result['result'] ?
-                    'Transmissão iniciado com sucesso.' :
-                    'Falha ao inicializar a transmissão.'
-                );
-            }
-
-            sleep(2);
-            $status = $this->getStatus(true);
-        }
-        else{
-            $result = ['result' => false, 'message' => 'Server status: '. $status['status']];
+        if($status['ffmpeg'] == (-1)){
+            $this->callService($this->ffmpegCfg['service'], 'start');
         }
 
-        $result['data'] = $status;
-        return $result;
+        if($status['serverStream'] == (-1)){
+            $this->callService($this->serverStreamCfg['service'], 'start');
+        }
+
+        sleep(2);
+        $status = $this->getStatus(true);
+
+        return [
+            'result' => $status['status'] == self::SERVER_STATUS_RUNNING,
+            'data' => [
+                'status' => $status['status']
+            ]
+        ];
     }
 
     public function stop(){
 
         $status = $this->getStatus(true);
 
-        if($status['status'] == self::SERVER_STATUS_RUNNING){
-
-            $result = $this->send('stop');
-
-            if(!isset($result['message'])){
-                $result['message'] = (
-                    $result['result'] ?
-                    'Transmissão encerrada com sucesso.' :
-                    'Falha ao encerrar a transmissão.'
-                );
-            }
-
-            sleep(2);
-            $status = $this->getStatus(true);
-        }
-        else{
-            $result = ['result' => false, 'message' => 'Server status: '. $status['status']];
+        if($status['ffmpeg'] != (-1)){
+            $this->callService($this->ffmpegCfg['service'], 'stop');
         }
 
-        $result['data'] = $status;
-        return $result;
+        if($status['serverStream'] != (-1)){
+            $this->callService($this->serverStreamCfg['service'], 'stop');
+        }
+
+        sleep(2);
+        $status = $this->getStatus(true);
+
+        return [
+            'result' => $status['status'] == self::SERVER_STATUS_STOPPED,
+            'data' => [
+                'status' => $status['status']
+            ]
+        ];
     }
 
     public function status(){
         return [
             'result' => true,
-            'data' => $this->getStatus()
+            'data' => [
+                'status' => $this->getStatus()['status']
+            ]
         ];
-    }
-
-    static function toCamelCase($str, $sep, $startLower = true){
-
-        $words = explode($sep, $str);
-        $str = '';
-
-        foreach ($words as $k => $w) $str .= ucfirst($w);
-        return $startLower ? lcfirst($str) : $str;
-    }
-
-    static function parseConfig($c){
-
-        $config = [];
-        foreach ($c as $key => $value){
-            $config[self::toCamelCase($key, '_')] = is_array($value) ? self::parseConfig($value) : $value;
-        }
-
-        return $config;
     }
 }

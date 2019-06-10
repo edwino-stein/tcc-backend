@@ -1,22 +1,13 @@
 
 parameters:
-
     server_stream:
-        reference_file: '%kernel.project_dir%/var/server_stream.json'
-        config:
-            server_port: 8888
-            input_device: '/dev/video0'
-            decoder:
-                width: 640
-                height: 480
-                framerate: 30
-                rescale_ts: false
-            encoder:
-                demuxer: 'mpegts'
-                codec: 'mpeg1video'
-                width: 640
-                height: 480
-                framerate: 30
-                bitrate: 1000000
-                bframes: 0
-                rescale_ts: true
+        sudo_bin: '/usr/bin/sudo'
+        service_bin: '/usr/sbin/service'
+        ffmpeg:
+            service: 'ffmpegd'
+            pid_file: '/var/run/ffmpeg-daemon.pid'
+            log_file: '/var/log/ffmpeg-daemon.log'
+        server_stream:
+            service: 'serverstreamd'
+            pid_file: '/var/run/serverstream-daemon.pid'
+            log_file: '/var/log/serverstream-daemon.log'
