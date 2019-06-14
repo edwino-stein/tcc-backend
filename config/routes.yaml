@@ -2,6 +2,12 @@
 #    path: /
 #    controller: App\Controller\DefaultController::index
 
+auth_login:
+    path:     /auth/login
+
+auth_logout:
+    path:     /auth/logout
+
 frontend:
     path:     /{path}
     controller: App\Controller\FrontendController::index
