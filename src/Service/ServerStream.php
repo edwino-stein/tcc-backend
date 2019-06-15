@@ -46,6 +46,19 @@ class ServerStream {
         return $output;
     }
 
+    protected function readFileStatus(){
+
+        if(!file_exists($this->serverStreamCfg['status_file'])) return ['watching' => 0];
+
+        $data = file_get_contents($this->serverStreamCfg['status_file']);
+        if(empty($data)) return ['watching' => 0];
+
+        $data = json_decode($data, true);
+        if($data == NULL) return ['watching' => 0];
+
+        return $data;
+    }
+
     protected function getFfmpegPid(){
         if(!file_exists($this->ffmpegCfg['pid_file'])) return (-1);
         $pid = (int) file_get_contents($this->ffmpegCfg['pid_file']);
@@ -64,6 +77,7 @@ class ServerStream {
 
         $ffmpegPid = $this->getFfmpegPid();
         $serverStreamPid = $this->getServerStreamPid();
+        $serverStreamStatus = $this->readFileStatus();
 
         $data = [
             'ffmpeg' => $ffmpegPid,
@@ -71,6 +85,7 @@ class ServerStream {
             'status' => $ffmpegPid == (-1) || $serverStreamPid == (-1) ? self::SERVER_STATUS_STOPPED : self::SERVER_STATUS_RUNNING
         ];
 
+        foreach ($serverStreamStatus as $key => $value) $data[$key] = $value;
         return $data;
     }
 
@@ -106,7 +121,8 @@ class ServerStream {
         return [
             'result' => $status['status'] == self::SERVER_STATUS_RUNNING,
             'data' => [
-                'status' => $status['status']
+                'status' => $status['status'],
+                'watching' => $status['watching']
             ]
         ];
     }
@@ -129,16 +145,19 @@ class ServerStream {
         return [
             'result' => $status['status'] == self::SERVER_STATUS_STOPPED,
             'data' => [
-                'status' => $status['status']
+                'status' => $status['status'],
+                'watching' => $status['watching']
             ]
         ];
     }
 
     public function status(){
+        $status = $this->getStatus();
         return [
             'result' => true,
             'data' => [
-                'status' => $this->getStatus()['status']
+                'status' => $status['status'],
+                'watching' => $status['watching']
             ]
         ];
     }

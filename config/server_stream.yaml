@@ -11,3 +11,4 @@ parameters:
             service: 'serverstreamd'
             pid_file: '/var/run/serverstream-daemon.pid'
             log_file: '/var/log/serverstream-daemon.log'
+            status_file: '%kernel.project_dir%/var/server_stream.json'
