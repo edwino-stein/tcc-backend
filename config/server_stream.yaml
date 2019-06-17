@@ -1,8 +1,6 @@
 
 parameters:
     server_stream:
-        sudo_bin: '/usr/bin/sudo'
-        service_bin: '/usr/sbin/service'
         ffmpeg:
             service: 'ffmpegd'
             pid_file: '/var/run/ffmpeg-daemon.pid'

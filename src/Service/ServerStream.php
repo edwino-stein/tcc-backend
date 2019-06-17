@@ -6,8 +6,6 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Contracts\Cache\ItemInterface;
 
-use App\Util\UnixQueueMessage;
-
 class ServerStream {
 
     public const SERVER_STATUS_STOPPED  = 'STOPPED';
@@ -22,11 +20,12 @@ class ServerStream {
     protected $serverStreamCfg = [];
 
     public function __construct(ParameterBagInterface $params){
-        $params = $params->get("server_stream");
-        $this->ffmpegCfg = $params['ffmpeg'];
-        $this->serverStreamCfg = $params['server_stream'];
-        $this->sudoBin = $params['sudo_bin'];
-        $this->serviceBin = $params['service_bin'];
+        $serverParams = $params->get("server_stream");
+        $linuxParams = $params->get("linux");
+        $this->ffmpegCfg = $serverParams['ffmpeg'];
+        $this->serverStreamCfg = $serverParams['server_stream'];
+        $this->sudoBin = $linuxParams['sudo_bin'];
+        $this->serviceBin = $linuxParams['service_bin'];
     }
 
     protected function callService($service, $action){

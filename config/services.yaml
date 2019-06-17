@@ -31,3 +31,4 @@ services:
 
 imports:
     - { resource: 'server_stream.yaml'}
+    - { resource: 'linux.yaml'}

@@ -1,0 +1,11 @@
+
+parameters:
+    linux:
+        sudo_bin: '/usr/bin/sudo'
+        service_bin: '/usr/sbin/service'
+        poweroff_bin: '/sbin/poweroff'
+        reboot_bin: '/sbin/reboot'
+        wifi_if: 'wlan0'
+        iwconfig_bin: '/sbin/iwconfig'
+        ifconfig_bin: '/sbin/ifconfig'
+        hostname_bin: '/bin/hostname'
