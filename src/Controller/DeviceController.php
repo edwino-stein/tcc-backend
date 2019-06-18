@@ -35,11 +35,9 @@ class DeviceController extends AbstractController {
      * @Route("/device/info", name="device_info")
      */
     public function info(DeviceService $device){
-
-        var_dump($device->getInfo());
-
-        return $this->render('device/index.html.twig', [
-            'controller_name' => 'DeviceController',
+        return $this->json([
+            'result' => true,
+            'data' => $device->getInfo()
         ]);
     }
 }

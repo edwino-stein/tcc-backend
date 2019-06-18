@@ -33,26 +33,35 @@ class DeviceService {
 
     protected function readInfo(){
 
-        $wifiName = $this->exec([$this->iwconfigBin, $this->wifiIf])['output'];
+        $wifiData = $this->exec([$this->iwconfigBin, $this->wifiIf])['output'];
+        $wifiName = 'undefined';
+        $wifibt = 'undefined';
 
-        if(!empty($wifiName)){
-            $wifiName = explode('ESSID:', $wifiName[0])[1];
+        if(!empty($wifiData)){
+
+            $matches = [];
+            preg_match('/ESSID:\"[a-zA-Z\d]*\"/', $wifiData[0], $matches);
+            $wifiName = explode(':', $matches[0])[1];
             $wifiName = str_replace('"', '', $wifiName);
-        }
-        else {
-            $wifiName = 'undefined';
+
+            $matches = [];
+            preg_match('/Bit\s?Rate=\d*(.\d*)?\s?(M|m|K|k)b\/s/', $wifiData[2], $matches);
+            $wifibt = explode('=', $matches[0])[1];
         }
 
-        $ip = $this->exec([$this->ifconfigBin, $this->wifiIf])['output'];
-        if(!empty($ip)){
-            $ip = trim(explode('netmask', $ip[1])[0]);
-            $ip = str_replace('inet ', '', $ip);
-        }
-        else{
-            $ip = 'undefined';
+
+        $ifconfig = $this->exec([$this->ifconfigBin, $this->wifiIf])['output'];
+        $ip = 'undefined';
+
+        if(!empty($ifconfig)){
+            $matches = [];
+            preg_match('/inet\s\d*.\d*.\d*.\d*/', $ifconfig[1], $matches);
+            $ip = str_replace('inet ', '', $matches[0]);
         }
 
         $hostname = $this->exec([$this->hostnameBin])['output'];
+
+
         if(!empty($hostname)){
             $hostname = $hostname[0];
         }
@@ -63,6 +72,7 @@ class DeviceService {
         return [
             'wifi' => $wifiName,
             'security' => '',
+            'bitrate' => $wifibt,
             'ip' => $ip,
             'hostname' => $hostname,
             'so' => 'Raspbian/Linux',
@@ -96,14 +106,14 @@ class DeviceService {
     }
 
     public function poweroff(){
-        $this->sendPreResponse(json_encode(['result' => true], JSON_FORCE_OBJECT));
+        $this->sendPreResponse(json_encode(['result' => true, 'data' => null], JSON_FORCE_OBJECT));
         sleep($this->waitFor);
         $this->exec([$this->poweroffBin], true);
         return new Response();
     }
 
     public function reboot(){
-        $this->sendPreResponse(json_encode(['result' => true], JSON_FORCE_OBJECT));
+        $this->sendPreResponse(json_encode(['result' => true, 'data' => null], JSON_FORCE_OBJECT));
         sleep($this->waitFor);
         $this->exec([$this->rebootBin], true);
         return new Response();
