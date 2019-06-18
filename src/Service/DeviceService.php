@@ -18,6 +18,8 @@ class DeviceService {
     protected $iwconfigBin = '';
     protected $ifconfigBin = '';
     protected $hostnameBin = '';
+    protected $catBin = '';
+    protected $hostapdConf = '';
 
     public function __construct(ParameterBagInterface $params){
         $params = $params->get("linux");
@@ -28,7 +30,8 @@ class DeviceService {
         $this->wifiIf = $params['wifi_if'];
         $this->iwconfigBin = $params['iwconfig_bin'];
         $this->ifconfigBin = $params['ifconfig_bin'];
-        $this->hostnameBin = $params['hostname_bin'];
+        $this->catBin = $params['cat_bin'];
+        $this->hostapdConf = $params['hostapd_conf'];
     }
 
     protected function readInfo(){
@@ -36,19 +39,44 @@ class DeviceService {
         $wifiData = $this->exec([$this->iwconfigBin, $this->wifiIf])['output'];
         $wifiName = 'undefined';
         $wifibt = 'undefined';
+        $wifiIsClient = true;
+        $wifiSecurity = 'undefined';
 
         if(!empty($wifiData)){
 
             $matches = [];
-            preg_match('/ESSID:\"[a-zA-Z\d]*\"/', $wifiData[0], $matches);
-            $wifiName = explode(':', $matches[0])[1];
-            $wifiName = str_replace('"', '', $wifiName);
+            preg_match('/Mode:Master/', $wifiData[0], $matches);
 
-            $matches = [];
-            preg_match('/Bit\s?Rate=\d*(.\d*)?\s?(M|m|K|k)b\/s/', $wifiData[2], $matches);
-            $wifibt = explode('=', $matches[0])[1];
+            if(empty($matches[0])){
+
+                $matches = [];
+                preg_match('/ESSID:\"[a-zA-Z\d]*\"/', $wifiData[0], $matches);
+                $wifiName = explode(':', $matches[0])[1];
+                $wifiName = str_replace('"', '', $wifiName);
+
+                $matches = [];
+                preg_match('/Bit\s?Rate=\d*(.\d*)?\s?(M|m|K|k)b\/s/', $wifiData[2], $matches);
+                $wifibt = explode('=', $matches[0])[1];
+
+            }
+            else {
+                $wifiIsClient = false;
+            }
         }
 
+        if(!$wifiIsClient){
+
+            $wifiData = implode("\n", $this->exec([$this->catBin, $this->hostapdConf])['output']);
+
+            $matches = [];
+            preg_match('/ssid=[a-zA-Z\d]*/m', $wifiData, $matches);
+            $wifiName = explode('=', $matches[0])[1];
+
+            $matches = [];
+            preg_match('/passphrase=[a-zA-Z\d]*/m', $wifiData, $matches);
+            var_dump($matches);
+            $wifiSecurity = explode('=', $matches[0])[1];
+        }
 
         $ifconfig = $this->exec([$this->ifconfigBin, $this->wifiIf])['output'];
         $ip = 'undefined';
@@ -71,8 +99,9 @@ class DeviceService {
 
         return [
             'wifi' => $wifiName,
-            'security' => '',
+            'security' => $wifiSecurity,
             'bitrate' => $wifibt,
+            'isWifiClient' => $wifiIsClient,
             'ip' => $ip,
             'hostname' => $hostname,
             'so' => 'Raspbian/Linux',
@@ -122,7 +151,7 @@ class DeviceService {
     public function getInfo(){
         $cache = new FilesystemAdapter();
         return $cache->get('device_info', function (ItemInterface $item) {
-            return $this->readInfo();;
+            return $this->readInfo();
         });
     }
 }

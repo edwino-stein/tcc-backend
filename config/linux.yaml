@@ -9,3 +9,5 @@ parameters:
         iwconfig_bin: '/sbin/iwconfig'
         ifconfig_bin: '/sbin/ifconfig'
         hostname_bin: '/bin/hostname'
+        cat_bin: '/bin/cat'
+        hostapd_conf: '/etc/hostapd/hostapd.conf'
