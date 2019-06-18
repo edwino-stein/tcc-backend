@@ -30,6 +30,7 @@ class DeviceService {
         $this->wifiIf = $params['wifi_if'];
         $this->iwconfigBin = $params['iwconfig_bin'];
         $this->ifconfigBin = $params['ifconfig_bin'];
+        $this->hostnameBin = $params['hostname_bin'];
         $this->catBin = $params['cat_bin'];
         $this->hostapdConf = $params['hostapd_conf'];
     }
@@ -87,8 +88,6 @@ class DeviceService {
         }
 
         $hostname = $this->exec([$this->hostnameBin])['output'];
-
-
         if(!empty($hostname)){
             $hostname = $hostname[0];
         }
