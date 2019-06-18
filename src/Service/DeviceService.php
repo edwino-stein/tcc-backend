@@ -74,7 +74,6 @@ class DeviceService {
 
             $matches = [];
             preg_match('/passphrase=[a-zA-Z\d]*/m', $wifiData, $matches);
-            var_dump($matches);
             $wifiSecurity = explode('=', $matches[0])[1];
         }
 
