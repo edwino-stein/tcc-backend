@@ -149,6 +149,7 @@ class DeviceService {
     public function getInfo(){
         $cache = new FilesystemAdapter();
         return $cache->get('device_info', function (ItemInterface $item) {
+            $item->expiresAfter(60);
             return $this->readInfo();
         });
     }
